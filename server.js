@@ -1,49 +1,82 @@
- let express = require('express')
- let app = express()
- app.listen(3000)
+let express = require('express')
+let mongoose = require('mongoose')
+let app = express()
 
-
- // Over Here In Express We Dont Have to define Status code like in Node Server 
- // (Automatic)express pata kr k send kr deta (wo bhi some case mai and some case mai
- // likhna pdta hn )
- 
- // This Is Routing ->
-
- app.get('/', (req, res) => {
-
-                // Method_1 => Full Path
- res.sendFile('./views/home.html', { root: __dirname });
- 
- });
- app.get('/about', (req, res) => {
-
- // For sending HtmlFile -> res.sendFile(full_path) and for Html code 
- // res.send(<h1>HI<h1 />) ----- Over here we dont set setHeader and res.en()
- // apne aap yaha ho jata hn as compare to Node 
-
- app.get('/', (req, res) => {
- res.sendFile('./views/home.html', { root: __dirname });
- });
- 
- res.sendFile('/home/arpit/Documents/arpit-root/Backend/views/about.html');
-               // Method_2 => Full Path
- });
-
- // Redirect
-app.get('/about-us', (req, res) => {
-  res.redirect('/about')
+app.listen(3000, () => {
+ console.log('listening')
 })
 
-// 404 and MiddleWare
-app.use((req, res) => {
- 
-  // In this we have to set Status code -> Express 200 dega (just we are sending file)
-  // but konsa file hn nhi pata (404)
-  // To set status code there are two Ways
-  // One Like Node way
-  // res.statusCode = 404
-  // Two New One With chaning
- res.status(404).sendFile('./views/404.html', { root: __dirname });
+// Imp Line To Write
+app.use(express.json())
 
-})
+// Mini App
+let todoRouter = express.Router()
+let todoHome = express.Router()
+
+app.use('/', todoRouter)
+
+todoRouter.route('/')
+  .get((req, res) => {
+  res.redirect('/todoHome');
+ })
+
+app.use('/todoHome', todoHome);
+todoHome.route('/')
+  .get(todoHomeFile)
+  .post(todoPost)
+
+ // Connect MongoDb
+ let url =
+  'mongodb://arpit:arpit@cluster0-shard-00-00.con4f.mongodb.net:27017,cluster0-shard-00-01.con4f.mongodb.net:27017,cluster0-shard-00-02.con4f.mongodb.net:27017/myFirstDatabase?ssl=true&replicaSet=atlas-vtr0rf-shard-0&authSource=admin&retryWrites=true&w=majority';
+   
+mongoose.connect(url)
+ .then(() => {
+   console.log('DB_Connected');
+ })
+ .catch((err) => {
+  // console.log(err)
+ })
+
+let taskSchema = mongoose.Schema({
+  todo: {
+    type: String,
+    reuired:true,
+  },
+  fav: {
+    type: Boolean,
+    required:true
+  },
  
+ })
+
+
+let taskData = mongoose.model('taskData', taskSchema);
+
+async function todoPost(req, res) {
+  let taskDefine = req.body
+  if (taskDefine.task == 'create') {
+    let dbTaskData = await taskData.create(taskDefine);
+    let alldata = await taskData.find();
+    res.json(alldata);
+  } else if (taskDefine.task == 'fav') {
+    
+    let dbFavUpdate = await taskData.findOneAndUpdate(
+      { _id: taskDefine._id },
+      { fav: taskDefine.fav }
+    );
+     let alldata = await taskData.find();
+     res.json(alldata);
+  } else if (taskDefine.task == 'delete') {
+    let dbFavUpdate = await taskData.findOneAndDelete({ _id: taskDefine._id });
+    let alldata = await taskData.find();
+    res.json(alldata);
+  } else if (taskDefine.task == 'search') {
+    let data =taskDefine.value
+    let alldata = await taskData.find({ todo: data });
+    console.log(alldata)
+        res.json(alldata);
+  }
+ }
+function todoHomeFile(req, res) {
+  res.sendFile('./public/todoHome.html',{root:__dirname})
+}
